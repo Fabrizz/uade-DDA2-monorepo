@@ -1,0 +1,78 @@
+name: OpenAPI Docs
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "server/**"
+      - ".github/workflows/openapi-docs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: openapi-docs
+  cancel-in-progress: false
+
+jobs:
+  publish-openapi-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Generate OpenAPI spec
+        working-directory: server
+        run: ./gradlew generateOpenApiDocs --no-daemon
+
+      - name: Build static docs (Redoc)
+        run: |
+          mkdir -p site
+          npx --yes @redocly/cli build-docs server/build/openapi/openapi.json \
+            --output site/index.html \
+            --title "API Docs (${{ github.ref_name }})"
+
+      - name: Publish branch docs
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          destination_dir: ${{ github.ref_name }}
+          keep_files: true
+
+      - name: Build landing page
+        run: |
+          mkdir -p landing
+          cat > landing/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8" />
+              <title>API Docs</title>
+            </head>
+            <body>
+              <h1>OpenAPI Docs</h1>
+              <ul>
+                <li><a href="./main/">main</a></li>
+                <li><a href="./develop/">develop</a></li>
+              </ul>
+            </body>
+          </html>
+          EOF
+
+      - name: Publish landing page
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./landing
+          destination_dir: .
+          keep_files: true

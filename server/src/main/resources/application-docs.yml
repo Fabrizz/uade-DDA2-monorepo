@@ -1,0 +1,12 @@
+# Perfil usado únicamente para generar el spec de OpenAPI de forma estática
+# (ver tarea Gradle "generateOpenApiDocs"). Levanta el contexto de Spring
+# contra una base H2 en memoria para no depender de Postgres en CI.
+spring:
+  datasource:
+    url: jdbc:h2:mem:docs
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none

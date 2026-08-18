@@ -4,6 +4,7 @@ plugins {
 	id("org.springframework.boot") version "4.0.7"
 	id("io.spring.dependency-management") version "1.1.7"
 	kotlin("plugin.jpa") version "2.2.21"
+	id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
 }
 
 group = "com.uade.dda2"
@@ -69,6 +70,10 @@ dependencies {
 	// Driver JDBC de PostgreSQL.
 	// Solo es necesario cuando la aplicación está ejecutándose.
 	runtimeOnly("org.postgresql:postgresql")
+
+	// Base de datos en memoria usada solo por el perfil "docs"
+	// (generación estática del spec de OpenAPI en CI, sin Postgres real).
+	runtimeOnly("com.h2database:h2")
 
 
 	// ─────────────────────────────────────────────
@@ -185,4 +190,20 @@ allOpen {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+// ─────────────────────────────────────────────
+// OpenAPI - generación estática del spec
+// ─────────────────────────────────────────────
+// Levanta la app con el perfil "docs" (H2 en memoria, sin Postgres)
+// y vuelca /v3/api-docs a build/openapi/openapi.json.
+// Usado por el workflow que publica la documentación en GitHub Pages.
+openApi {
+	apiDocsUrl.set("http://localhost:8080/v3/api-docs")
+	outputDir.set(layout.buildDirectory.dir("openapi").get().asFile)
+	outputFileName.set("openapi.json")
+	waitTimeInSeconds.set(30)
+	customBootRun {
+		args.add("--spring.profiles.active=docs")
+	}
 }
